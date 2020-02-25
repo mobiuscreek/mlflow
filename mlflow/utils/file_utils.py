@@ -1,5 +1,4 @@
 import codecs
-import errno
 import gzip
 import os
 import posixpath
@@ -100,11 +99,11 @@ def mkdir(root, name=None):  # noqa
     """
     target = os.path.join(root, name) if name is not None else root
     try:
-        os.makedirs(target)
+        if not exists(target):
+            os.makedirs(target)
+            return target
     except OSError as e:
-        if e.errno != errno.EEXIST or not os.path.isdir(target):
-            raise e
-    return target
+        raise e
 
 
 def make_containing_dirs(path):

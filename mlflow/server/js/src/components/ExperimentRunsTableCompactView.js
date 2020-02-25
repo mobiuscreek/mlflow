@@ -12,9 +12,8 @@ import _ from 'lodash';
 import { LoadMoreBar } from './LoadMoreBar';
 
 import 'react-virtualized/styles.css';
-import { ColumnTypes } from '../common/utils';
 
-export const NUM_RUN_METADATA_COLS = 9;
+export const NUM_RUN_METADATA_COLS = 8;
 const TABLE_HEADER_HEIGHT = 40;
 const UNBAGGED_COL_WIDTH = 125;
 const BAGGED_COL_WIDTH = 250;
@@ -110,7 +109,6 @@ class ExperimentRunsTableCompactView extends React.Component {
     nextPageToken: PropTypes.string,
     handleLoadMoreRuns: PropTypes.func.isRequired,
     loadingMore: PropTypes.bool.isRequired,
-    categorizedUncheckedKeys: PropTypes.object.isRequired,
   };
 
 
@@ -133,7 +131,6 @@ class ExperimentRunsTableCompactView extends React.Component {
       unbaggedMetrics,
       unbaggedParams,
       onRemoveBagged,
-      categorizedUncheckedKeys,
     } = this.props;
     const paramsMap = ExperimentViewUtil.toParamsMap(paramsList[idx]);
     const metricsMap = ExperimentViewUtil.toMetricsMap(metricsList[idx]);
@@ -147,14 +144,12 @@ class ExperimentRunsTableCompactView extends React.Component {
           this.setState({ expanding: true });
         }, runInfo.run_uuid, "div"),
     ];
-    const excludedTagsSet = new Set(categorizedUncheckedKeys[ColumnTypes.TAGS]);
     ExperimentViewUtil.getRunInfoCellsForRow(
       runInfo,
-      _.pickBy(tagsList[idx], (t) => !excludedTagsSet.has(t.key)),
+      tagsList[idx],
       isParent,
       "div",
       this.handleCellToggle,
-      categorizedUncheckedKeys[ColumnTypes.ATTRIBUTES],
     ).forEach((col) => rowContents.push(col));
 
     const unbaggedParamSet = new Set(unbaggedParams);
@@ -366,7 +361,6 @@ class ExperimentRunsTableCompactView extends React.Component {
       nextPageToken,
       loadingMore,
       handleLoadMoreRuns,
-      categorizedUncheckedKeys,
     } = this.props;
     const rows = ExperimentViewUtil.getRowRenderMetadata({
       runInfos,
@@ -378,15 +372,8 @@ class ExperimentRunsTableCompactView extends React.Component {
       // placeholder for expander header cell,
       ExperimentViewUtil.getExpanderHeader("div"),
     ];
-
-    ExperimentViewUtil.getRunMetadataHeaderCells(
-      onSortBy,
-      orderByKey,
-      orderByAsc,
-      'div',
-      categorizedUncheckedKeys[ColumnTypes.ATTRIBUTES],
-    ).forEach((headerCell) => headerCells.push(headerCell));
-
+    ExperimentViewUtil.getRunMetadataHeaderCells(onSortBy, orderByKey, orderByAsc, "div")
+      .forEach((headerCell) => headerCells.push(headerCell));
     this.getMetricParamHeaderCells().forEach((cell) => headerCells.push(cell));
     const showLoadMore = (nextPageToken && this.state.isAtScrollBottom) || this.props.loadingMore;
     return (
@@ -416,7 +403,6 @@ class ExperimentRunsTableCompactView extends React.Component {
               const runMetadataColWidths = [
                 30, // checkbox column width
                 20, // expander column width
-                35, // 'Status' column width
                 180, // 'Date' column width
                 120, // 'user' column width
                 120, // 'Run Name' column width
@@ -440,8 +426,6 @@ class ExperimentRunsTableCompactView extends React.Component {
               } else {
                 cellMeasurerProps.rowHeight = 32;
               }
-              const numVisibleMetaColumns =
-                NUM_RUN_METADATA_COLS - categorizedUncheckedKeys[ColumnTypes.ATTRIBUTES].length;
               return [<Table
                 key='table'
                 ref={this.tableRef}
@@ -473,7 +457,7 @@ class ExperimentRunsTableCompactView extends React.Component {
                   return base;
                 }}
               >
-                {[...Array(numVisibleMetaColumns).keys()].map((colIdx) => {
+                {[...Array(NUM_RUN_METADATA_COLS).keys()].map((colIdx) => {
                   return <Column
                     dataKey={'column-' + colIdx}
                     key={'column-' + colIdx}
@@ -482,7 +466,7 @@ class ExperimentRunsTableCompactView extends React.Component {
                     style={{
                       ...styles.columnStyle,
                       // show left boarder for run tags column
-                      ...(colIdx === numVisibleMetaColumns - 1
+                      ...(colIdx === NUM_RUN_METADATA_COLS - 1
                         ? { borderLeft: BORDER_STYLE }
                         : undefined
                       ),
@@ -504,9 +488,9 @@ class ExperimentRunsTableCompactView extends React.Component {
                     key={"param-" + unbaggedParam}
                     dataKey={"param-" + unbaggedParam}
                     width={UNBAGGED_COL_WIDTH}
-                    headerRenderer={() => headerCells[numVisibleMetaColumns + idx]}
+                    headerRenderer={() => headerCells[NUM_RUN_METADATA_COLS + idx]}
                     style={styles.columnStyle}
-                    cellRenderer={({rowData}) => rowData.contents[numVisibleMetaColumns + idx]}
+                    cellRenderer={({rowData}) => rowData.contents[NUM_RUN_METADATA_COLS + idx]}
                   />;
                 })}
                 {showBaggedParams && <Column
@@ -523,7 +507,7 @@ class ExperimentRunsTableCompactView extends React.Component {
                   }}
                   style={{...styles.columnStyle, borderLeft: BORDER_STYLE}}
                   cellRenderer={({rowIndex, rowData, parent, dataKey}) => {
-                    const colIdx = numVisibleMetaColumns + unbaggedParams.length;
+                    const colIdx = NUM_RUN_METADATA_COLS + unbaggedParams.length;
                     // Add extra padding for load more
                     const paddingOpt = rowIndex === rows.length - 1
                       ? { paddingBottom: LOAD_MORE_ROW_HEIGHT * 2 }
@@ -541,7 +525,7 @@ class ExperimentRunsTableCompactView extends React.Component {
                   }}
                 />}
                 {unbaggedMetrics.map((unbaggedMetric, idx) => {
-                  const colIdx = numVisibleMetaColumns + showBaggedParams +
+                  const colIdx = NUM_RUN_METADATA_COLS + showBaggedParams +
                     unbaggedParams.length + idx;
                   return <Column
                     key={"metric-" + unbaggedMetric}
@@ -567,7 +551,7 @@ class ExperimentRunsTableCompactView extends React.Component {
                   }}
                   style={{...styles.columnStyle, borderLeft: BORDER_STYLE}}
                   cellRenderer={({rowIndex, rowData, parent, dataKey}) => {
-                    const colIdx = numVisibleMetaColumns + showBaggedParams +
+                    const colIdx = NUM_RUN_METADATA_COLS + showBaggedParams +
                       unbaggedParams.length + unbaggedMetrics.length;
                     return (<CellMeasurer
                       cache={this._cache}
@@ -585,15 +569,11 @@ class ExperimentRunsTableCompactView extends React.Component {
               (showLoadMore ? (
                 <LoadMoreBar
                   key='load-more-row'
+                  height={LOAD_MORE_ROW_HEIGHT}
+                  width={tableWidth}
+                  borderStyle={BORDER_STYLE}
                   loadingMore={loadingMore}
                   onLoadMore={handleLoadMoreRuns}
-                  style={{
-                    position: 'absolute',
-                    bottom: 20,
-                    border: BORDER_STYLE,
-                    width: tableWidth,
-                    height: LOAD_MORE_ROW_HEIGHT,
-                  }}
                 />
               ) : null)];
             }}

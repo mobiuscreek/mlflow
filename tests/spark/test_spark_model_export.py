@@ -1,4 +1,3 @@
-import logging
 import os
 
 import json
@@ -35,8 +34,6 @@ from tests.helper_functions import set_boto_credentials  # pylint: disable=unuse
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
 from tests.projects.utils import tracking_uri_mock  # pylint: disable=unused-import
 
-_logger = logging.getLogger(__name__)
-
 
 @pytest.fixture
 def spark_custom_env(tmpdir):
@@ -62,19 +59,12 @@ def spark_context():
              value='ml.combust.mleap:mleap-spark-base_2.11:0.12.0,'
                    'ml.combust.mleap:mleap-spark_2.11:0.12.0')
     conf.set(key="spark_session.python.worker.reuse", value=True)
-    max_tries = 3
-    for num_tries in range(max_tries):
-        try:
-            spark = pyspark.sql.SparkSession.builder\
-                .config(conf=conf)\
-                .master("local-cluster[2, 1, 1024]")\
-                .getOrCreate()
-            return spark.sparkContext
-        except Exception as e:
-            if num_tries >= max_tries - 1:
-                raise
-            _logger.exception(e, "Attempt %s to create a SparkSession failed, retrying..." %
-                              num_tries)
+    spark = pyspark.sql.SparkSession.builder\
+        .config(conf=conf)\
+        .master("local-cluster[2, 1, 1024]")\
+        .getOrCreate()
+    sc = spark.sparkContext
+    return sc
 
 
 @pytest.fixture(scope="session")
@@ -223,7 +213,10 @@ def test_transformer_model_export(spark_model_transformer, model_path, spark_cus
     assert "Cannot serialize this model" in e.value.message
 
 
-@pytest.mark.large
+# TODO(czumar): Remark this test as "large" instead of "release" after SageMaker docker
+# container build issues have been debugged
+# @pytest.mark.large
+@pytest.mark.release
 def test_model_deployment(spark_model_iris, model_path, spark_custom_env):
     sparkm.save_model(spark_model_iris.model, path=model_path,
                       conda_env=spark_custom_env,
@@ -252,7 +245,7 @@ def test_model_deployment(spark_model_iris, model_path, spark_custom_env):
             decimal=4)
 
 
-@pytest.mark.large
+@pytest.mark.release
 def test_sagemaker_docker_model_scoring_with_default_conda_env(spark_model_iris, model_path):
     sparkm.save_model(spark_model_iris.model, path=model_path, conda_env=None)
 

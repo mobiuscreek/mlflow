@@ -8,7 +8,8 @@
 \usage{
 \method{mlflow_save_model}{crate}(model, path, ...)
 
-\method{mlflow_save_model}{keras.engine.training.Model}(model, path, conda_env = NULL, ...)
+\method{mlflow_save_model}{keras.engine.training.Model}(model, path,
+  conda_env = NULL, ...)
 
 mlflow_save_model(model, path, ...)
 }

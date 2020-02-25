@@ -1,12 +1,8 @@
 """
 The ``mlflow.mleap`` module provides an API for saving Spark MLLib models using the
 `MLeap <https://github.com/combust/mleap>`_ persistence mechanism.
-
-NOTE:
-
-    You cannot load the MLeap model flavor in Python; you must download it using the
-    Java API method ``downloadArtifacts(String runId)`` and load the model
-    using the method ``MLeapLoader.loadPipeline(String modelRootPath)``.
+A companion module for loading MLflow models with the MLeap flavor format is available in the
+``mlflow/java`` package.
 """
 
 from __future__ import absolute_import
@@ -32,9 +28,8 @@ def log_model(spark_model, sample_input, artifact_path, registered_model_name=No
 
     NOTE:
 
-        You cannot load the MLeap model flavor in Python; you must download it using the
-        Java API method ``downloadArtifacts(String runId)`` and load the model
-        using the method ``MLeapLoader.loadPipeline(String modelRootPath)``.
+        The MLeap model flavor cannot be loaded in Python; it must be loaded using the
+        Java module within the ``mlflow/java`` package.
 
     :param spark_model: Spark PipelineModel to be saved. This model must be MLeap-compatible and
                         cannot contain any custom transformers.
@@ -90,9 +85,8 @@ def save_model(spark_model, sample_input, path, mlflow_model=Model()):
 
     NOTE:
 
-        You cannot load the MLeap model flavor in Python; you must download it using the
-        Java API method ``downloadArtifacts(String runId)`` and load the model
-        using the method ``MLeapLoader.loadPipeline(String modelRootPath)``.
+        The MLeap model flavor cannot be loaded in Python; it must be loaded using the
+        Java module within the ``mlflow/java`` package.
 
     :param spark_model: Spark PipelineModel to be saved. This model must be MLeap-compatible and
                   cannot contain any custom transformers.
@@ -171,4 +165,4 @@ def _handle_py4j_error(reraised_error_type, reraised_error_text):
 
 
 class MLeapSerializationException(MlflowException):
-    """Exception thrown when a model or DataFrame cannot be serialized in MLeap format."""
+    """Exception thrown when a model or DataFrame cannot be serialized in MLeap format"""

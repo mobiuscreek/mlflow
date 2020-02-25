@@ -11,12 +11,11 @@ import {
 import { setExperimentTagApi, getUUID } from '../Actions';
 import { withRouter } from 'react-router-dom';
 import Routes from '../Routes';
-import { Button, ButtonGroup, DropdownButton, MenuItem } from 'react-bootstrap';
+import { Button, DropdownButton, MenuItem } from 'react-bootstrap';
 import { Experiment, RunInfo } from '../sdk/MlflowMessages';
 import { saveAs } from 'file-saver';
 import { getLatestMetrics } from '../reducers/MetricReducer';
 import KeyFilter from '../utils/KeyFilter';
-import { ExperimentRunsTableMultiColumnView2 } from './ExperimentRunsTableMultiColumnView2';
 import ExperimentRunsTableCompactView from "./ExperimentRunsTableCompactView";
 import { LIFECYCLE_FILTER } from './ExperimentPage';
 import ExperimentViewUtil from './ExperimentViewUtil';
@@ -28,12 +27,10 @@ import { ExperimentViewPersistedState } from "../sdk/MlflowLocalStorageMessages"
 import { Icon, Popover, Descriptions } from 'antd';
 import { CollapsibleSection } from '../common/components/CollapsibleSection';
 import { EditableNote } from '../common/components/EditableNote';
-import classNames from 'classnames';
+
+
 import Utils from '../utils/Utils';
 import { Spinner } from "./Spinner";
-import { RunsTableColumnSelectionDropdown } from './RunsTableColumnSelectionDropdown';
-import { ColumnTypes } from '../common/utils';
-import _ from 'lodash';
 
 export const DEFAULT_EXPANDED_VALUE = false;
 
@@ -114,7 +111,6 @@ export class ExperimentView extends Component {
     handleLoadMoreRuns: PropTypes.func.isRequired,
     loadingMore: PropTypes.bool.isRequired,
     setExperimentTagApi: PropTypes.func.isRequired,
-    location: PropTypes.object.isRequired,
   };
 
   /** Returns default values for state attributes that aren't persisted in local storage. */
@@ -122,9 +118,6 @@ export class ExperimentView extends Component {
     return {
       // Object mapping from run UUID -> boolean (whether the run is selected)
       runsSelected: {},
-      // A map { runUuid: true } of current selected child runs hidden by expander collapse
-      // runsSelected + hiddenChildRunsSelected = all runs currently actually selected
-      hiddenChildRunsSelected: {},
       // Text entered into the param filter field
       paramKeyFilterInput: '',
       // Text entered into the metric filter field
@@ -183,14 +176,6 @@ export class ExperimentView extends Component {
     }
   }
 
-  componentDidMount() {
-    if (this.props.location.pathname === "/") {
-      document.title = "MLflow Experiments";
-    } else {
-      document.title = `${this.props.experiment.name} - MLflow Experiment`;
-    }
-  }
-
   componentWillUnmount() {
     // Snapshot component state on unmounts to ensure we've captured component state in cases where
     // componentDidUpdate doesn't fire.
@@ -218,15 +203,6 @@ export class ExperimentView extends Component {
       lifecycleFilterInput: lifecycleFilter,
       runsSelected: newRunsSelected,
     };
-  }
-
-  setShowMultiColumns(value) {
-    this.setState({
-      persistedState: new ExperimentViewPersistedState({
-        ...this.state.persistedState,
-        showMultiColumns: value,
-      }).toJSON(),
-    });
   }
 
   onDeleteRun() {
@@ -322,44 +298,25 @@ export class ExperimentView extends Component {
     );
   }
 
-  handleColumnSelectionCheck = (categorizedUncheckedKeys) => {
-    this.setState({
-      persistedState: new ExperimentViewPersistedState({
-        ...this.state.persistedState,
-        categorizedUncheckedKeys,
-      }).toJSON(),
-    });
-  };
-
-  getFilteredKeys(keyList, columnType) {
-    const { categorizedUncheckedKeys } = this.state.persistedState;
-    return _.difference(keyList, categorizedUncheckedKeys[columnType]);
-  }
-
   render() {
+    const { experiment_id, name, artifact_location } = this.props.experiment;
+    const { experimentTags } = this.props;
     const {
       runInfos,
+      paramKeyFilter,
+      metricKeyFilter,
       isLoading,
       loadingMore,
       nextPageToken,
       handleLoadMoreRuns,
-      experimentTags,
-      experiment,
-      tagsList,
-      paramKeyList,
-      metricKeyList,
     } = this.props;
-    const { experiment_id, name, artifact_location } = experiment;
-    const { persistedState } = this.state;
-    const { unbaggedParams, unbaggedMetrics, categorizedUncheckedKeys } = persistedState;
 
-    const filteredParamKeys = this.getFilteredKeys(paramKeyList, ColumnTypes.PARAMS);
-    const filteredMetricKeys = this.getFilteredKeys(metricKeyList, ColumnTypes.METRICS);
-
-    const visibleTagKeyList = Utils.getVisibleTagKeyList(tagsList);
-    const filteredVisibleTagKeyList = this.getFilteredKeys(visibleTagKeyList, ColumnTypes.TAGS);
-    const filteredUnbaggedParamKeys = this.getFilteredKeys(unbaggedParams, ColumnTypes.PARAMS);
-    const filteredUnbaggedMetricKeys = this.getFilteredKeys(unbaggedMetrics, ColumnTypes.METRICS);
+    // Apply our parameter and metric key filters to just pass the filtered, sorted lists
+    // of parameter and metric names around later
+    const paramKeyList = paramKeyFilter.apply(this.props.paramKeyList);
+    const metricKeyList = metricKeyFilter.apply(this.props.metricKeyList);
+    const unbaggedParamKeyList = paramKeyFilter.apply(this.state.persistedState.unbaggedParams);
+    const unbaggedMetricKeyList = metricKeyFilter.apply(this.state.persistedState.unbaggedMetrics);
 
     const compareDisabled = Object.keys(this.state.runsSelected).length < 2;
     const deleteDisabled = Object.keys(this.state.runsSelected).length < 1;
@@ -405,6 +362,14 @@ export class ExperimentView extends Component {
             null
           }
           <form className="ExperimentView-search-controls" onSubmit={this.onSearch}>
+            <div className="ExperimentView-search-buttons">
+              <input type="submit"
+                     className="search-button btn btn-primary"
+                     onClick={this.onSearch}
+                     value="Search"
+              />
+              <Button className="clear-button" onClick={this.onClear}>Clear</Button>
+            </div>
             <div className="ExperimentView-search-inputs">
               <div className="ExperimentView-search">
                 <div className="ExperimentView-search-input">
@@ -458,13 +423,28 @@ export class ExperimentView extends Component {
                     </DropdownButton>
                   </div>
                 </div>
-                <button
-                  className='btn btn-primary search-button'
-                  onClick={this.onSearch}
-                >
-                  Search
-                </button>
-                <button className='btn clear-button' onClick={this.onClear}>Clear</button>
+              </div>
+              <div className="ExperimentView-keyFilters">
+                <div className="ExperimentView-paramKeyFilter">
+                  <label className="filter-label">Filter Params:</label>
+                  <div className="filter-wrapper">
+                    <input type="text"
+                           placeholder="alpha, lr"
+                           value={this.state.paramKeyFilterInput}
+                           onChange={this.onParamKeyFilterInput}
+                    />
+                  </div>
+                </div>
+                <div className="ExperimentView-metricKeyFilter">
+                  <label className="filter-label metrics-filter-label">Filter Metrics:</label>
+                  <div className="filter-wrapper metrics-filter-wrapper">
+                    <input type="text"
+                           placeholder="rmse, r2"
+                           value={this.state.metricKeyFilterInput}
+                           onChange={this.onMetricKeyFilterInput}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </form>
@@ -490,70 +470,18 @@ export class ExperimentView extends Component {
             <Button onClick={this.onDownloadCsv}>
               Download CSV <i className="fas fa-download"/>
             </Button>
-            <span style={{ float: 'right', marginLeft: 16 }}>
-              <RunsTableColumnSelectionDropdown
-                paramKeyList={paramKeyList}
-                metricKeyList={metricKeyList}
-                visibleTagKeyList={visibleTagKeyList}
-                categorizedUncheckedKeys={categorizedUncheckedKeys}
-                onCheck={this.handleColumnSelectionCheck}
-              />
-            </span>
-            <span style={{ cursor: 'pointer', float: 'right' }}>
-              <ButtonGroup style={styles.tableToggleButtonGroup}>
-              <Button
-                onClick={() => this.setShowMultiColumns(false)}
-                title="Compact view"
-                className={classNames({ "active": !this.state.persistedState.showMultiColumns })}
-              >
-                <i className={"fas fa-list"}/>
-              </Button>
-              <Button
-                onClick={() => this.setShowMultiColumns(true)}
-                title="Grid view"
-                className={classNames({ "active": this.state.persistedState.showMultiColumns })}
-              >
-                <i className={"fas fa-table"}/>
-              </Button>
-              </ButtonGroup>
-            </span>
           </div>
-          {this.state.persistedState.showMultiColumns ?
-            <ExperimentRunsTableMultiColumnView2
-              experimentId={experiment.experiment_id}
-              onSelectionChange={this.handleMultiColumnViewSelectionChange}
-              runInfos={this.props.runInfos}
-              paramsList={this.props.paramsList}
-              metricsList={this.props.metricsList}
-              tagsList={this.props.tagsList}
-              paramKeyList={filteredParamKeys}
-              metricKeyList={filteredMetricKeys}
-              visibleTagKeyList={filteredVisibleTagKeyList}
-              categorizedUncheckedKeys={categorizedUncheckedKeys}
-              isAllChecked={this.isAllChecked()}
-              onSortBy={this.onSortBy}
-              orderByKey={this.props.orderByKey}
-              orderByAsc={this.props.orderByAsc}
-              runsSelected={this.state.runsSelected}
-              runsExpanded={this.state.persistedState.runsExpanded}
-              onExpand={this.onExpand}
-              nextPageToken={nextPageToken}
-              handleLoadMoreRuns={handleLoadMoreRuns}
-              loadingMore={loadingMore}
-              isLoading={isLoading}
-            />
-            :
-            (isLoading ? <Spinner showImmediately /> : (
+          {isLoading ?
+            <Spinner showImmediately/> : (
               <ExperimentRunsTableCompactView
                 onCheckbox={this.onCheckbox}
                 runInfos={this.props.runInfos}
                 // Bagged param and metric keys
-                paramKeyList={filteredParamKeys}
-                metricKeyList={filteredMetricKeys}
+                paramKeyList={paramKeyList}
+                metricKeyList={metricKeyList}
                 paramsList={this.props.paramsList}
                 metricsList={this.props.metricsList}
                 tagsList={this.props.tagsList}
-                categorizedUncheckedKeys={categorizedUncheckedKeys}
                 onCheckAll={this.onCheckAll}
                 isAllChecked={this.isAllChecked()}
                 onSortBy={this.onSortBy}
@@ -562,15 +490,14 @@ export class ExperimentView extends Component {
                 runsSelected={this.state.runsSelected}
                 runsExpanded={this.state.persistedState.runsExpanded}
                 onExpand={this.onExpand}
-                unbaggedMetrics={filteredUnbaggedMetricKeys}
-                unbaggedParams={filteredUnbaggedParamKeys}
+                unbaggedMetrics={unbaggedMetricKeyList}
+                unbaggedParams={unbaggedParamKeyList}
                 onAddBagged={this.addBagged}
                 onRemoveBagged={this.removeBagged}
                 nextPageToken={nextPageToken}
                 handleLoadMoreRuns={handleLoadMoreRuns}
                 loadingMore={loadingMore}
               />
-              )
             )
           }
         </div>
@@ -643,51 +570,36 @@ export class ExperimentView extends Component {
     }
   }
 
-  // Special handler for ag-grid selection change event from multi-column view
-  handleMultiColumnViewSelectionChange = (selectedRunUuids) => {
-    const runsSelected = {};
-    selectedRunUuids.forEach((runUuid) => runsSelected[runUuid] = true);
-    this.setState({ runsSelected });
-  };
-
-  onExpand(runId, childRunIds) {
-    const { runsSelected, hiddenChildRunsSelected, persistedState } = this.state;
-    const { runsExpanded } = persistedState;
-    const expandedAfterToggle = !ExperimentViewUtil.isExpanderOpen(runsExpanded, runId);
-    const newRunsSelected = { ...runsSelected };
-    const newHiddenChildRunsSelected = { ...hiddenChildRunsSelected };
-
-    if (expandedAfterToggle) {
-      // User expanded current run, to automatically select previous hidden child runs that were
-      // selected, find them in `hiddenChildRunsSelected` and add them to `newRunsSelected`
-      childRunIds.forEach((childRunId) => {
-        if (hiddenChildRunsSelected[childRunId]) {
-          delete newHiddenChildRunsSelected[childRunId];
-          newRunsSelected[childRunId] = true;
-        }
-      });
-    } else {
-      // User collapsed current run, find all currently selected child runs from `runsSelected` and
-      // save them to `newHiddenChildRunsSelected`
-      childRunIds.forEach((childRunId) => {
-        if (runsSelected[childRunId]) {
-          delete newRunsSelected[childRunId];
-          newHiddenChildRunsSelected[childRunId] = true;
-        }
-      });
-    }
-
+  onExpand(runId, childrenIds) {
+    const newExpanderState = !ExperimentViewUtil.isExpanderOpen(
+      this.state.persistedState.runsExpanded, runId);
+    const newRunsHiddenByExpander = {...this.state.persistedState.runsHiddenByExpander};
+    childrenIds.forEach((childId) => {
+      newRunsHiddenByExpander[childId] = !newExpanderState;
+    });
+    const newPersistedStateFields = {
+      runsExpanded: {
+        ...this.state.persistedState.runsExpanded,
+        [runId]: newExpanderState,
+      },
+      runsHiddenByExpander: newRunsHiddenByExpander,
+    };
     this.setState({
-      runsSelected: newRunsSelected,
-      hiddenChildRunsSelected: newHiddenChildRunsSelected,
       persistedState: new ExperimentViewPersistedState({
         ...this.state.persistedState,
-        runsExpanded: {
-          ...this.state.persistedState.runsExpanded,
-          [runId]: expandedAfterToggle,
-        },
+        ...newPersistedStateFields,
       }).toJSON(),
     });
+    // Deselect the children
+    const newRunsSelected = {...this.state.runsSelected};
+    if (newExpanderState === false) {
+      childrenIds.forEach((childId) => {
+        if (newRunsSelected[childId]) {
+          delete newRunsSelected[childId];
+        }
+      });
+      this.setState({ runsSelected: newRunsSelected });
+    }
   }
 
   onParamKeyFilterInput(event) {
@@ -721,11 +633,8 @@ export class ExperimentView extends Component {
   }
 
   onClear() {
-    // When user clicks "Clear", preserve multicolumn toggle state but reset other persisted state
-    // attributes to their default values.
-    const newPersistedState = new ExperimentViewPersistedState({
-      showMultiColumns: this.state.persistedState.showMultiColumns,
-    });
+    // When user clicks "Clear", reset persisted state attributes to their default values.
+    const newPersistedState = new ExperimentViewPersistedState();
     this.setState({persistedState: newPersistedState.toJSON()}, () => {
       this.snapshotComponentState();
       this.initiateSearch({paramKeyFilterInput: "", metricKeyFilterInput: "",
@@ -741,17 +650,13 @@ export class ExperimentView extends Component {
   }
 
   onDownloadCsv() {
-    const { paramKeyList, metricKeyList, runInfos, paramsList, metricsList, tagsList } = this.props;
-    const filteredParamKeys = this.getFilteredKeys(paramKeyList, ColumnTypes.PARAMS);
-    const filteredMetricKeys = this.getFilteredKeys(metricKeyList, ColumnTypes.METRICS);
     const csv = ExperimentView.runInfosToCsv(
-      runInfos,
-      filteredParamKeys,
-      filteredMetricKeys,
-      paramsList,
-      metricsList,
-      tagsList
-    );
+      this.props.runInfos,
+      this.props.paramKeyFilter.apply(this.props.paramKeyList),
+      this.props.metricKeyFilter.apply(this.props.metricKeyList),
+      this.props.paramsList,
+      this.props.metricsList,
+      this.props.tagsList);
     const blob = new Blob([csv], { type: 'application/csv;charset=utf-8' });
     saveAs(blob, "runs.csv");
   }
@@ -920,9 +825,6 @@ const styles = {
   },
   lifecycleButtonFilterWrapper: {
     marginLeft: '48px',
-  },
-  tableToggleButtonGroup: {
-    marginLeft: 16,
   },
 };
 

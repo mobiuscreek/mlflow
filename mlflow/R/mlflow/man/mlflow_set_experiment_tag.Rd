@@ -4,7 +4,8 @@
 \alias{mlflow_set_experiment_tag}
 \title{Set Experiment Tag}
 \usage{
-mlflow_set_experiment_tag(key, value, experiment_id = NULL, client = NULL)
+mlflow_set_experiment_tag(key, value, experiment_id = NULL,
+  client = NULL)
 }
 \arguments{
 \item{key}{Name of the tag. All storage backends are guaranteed to support

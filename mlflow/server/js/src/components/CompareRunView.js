@@ -5,7 +5,6 @@ import { connect } from 'react-redux';
 import './CompareRunView.css';
 import { Experiment, RunInfo } from '../sdk/MlflowMessages';
 import CompareRunScatter from './CompareRunScatter';
-import CompareRunContour from './CompareRunContour';
 import Routes from '../Routes';
 import { Link } from 'react-router-dom';
 import { getLatestMetrics } from '../reducers/MetricReducer';
@@ -32,10 +31,6 @@ class CompareRunView extends Component {
     // ("Run <uuid>") for runs without names.
     runDisplayNames: PropTypes.arrayOf(String).isRequired,
   };
-
-  componentDidMount() {
-    document.title = `Comparing ${this.props.runInfos.length} MLflow Runs`;
-  }
 
   render() {
     const experiment = this.props.experiment;
@@ -128,13 +123,7 @@ class CompareRunView extends Component {
               runDisplayNames={this.props.runDisplayNames}
             />
           </TabPane>
-          <TabPane tab="Contour Plot" key="2">
-            <CompareRunContour
-              runUuids={this.props.runUuids}
-              runDisplayNames={this.props.runDisplayNames}
-            />
-          </TabPane>
-          <TabPane tab="Parallel Coordinates Plot" key="3">
+          <TabPane tab="Parallel Coordinates Plot" key="2">
             <ParallelCoordinatesPlotPanel runUuids={this.props.runUuids}/>
           </TabPane>
         </Tabs>

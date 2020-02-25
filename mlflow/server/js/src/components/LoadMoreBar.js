@@ -14,17 +14,19 @@ import PropTypes from 'prop-types';
 
 export class LoadMoreBar extends React.PureComponent {
   static propTypes = {
-    style: PropTypes.object,
+    height: PropTypes.number.isRequired,
+    width: PropTypes.number.isRequired,
+    borderStyle: PropTypes.string.isRequired,
     loadingMore: PropTypes.bool.isRequired,
     onLoadMore: PropTypes.func.isRequired,
   };
 
   render() {
-    const { loadingMore, onLoadMore, style } = this.props;
+    const { height, width, borderStyle, loadingMore, onLoadMore } = this.props;
     return (
       <div
         className='load-more-row'
-        style={{ ...styles.loadMoreRows, ...style }}
+        style={{ ...styles.loadMoreRows, height, width, border: borderStyle }}
       >
         {loadingMore ? (
           <div className='loading-more-wrapper' style={styles.loadingMoreWrapper}>
@@ -54,6 +56,8 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     background: 'white',
+    position: 'absolute',
+    bottom: 20,
   },
   loadingMoreWrapper: {
     display: 'flex',

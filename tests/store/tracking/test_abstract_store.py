@@ -50,9 +50,6 @@ class AbstractStoreTestImpl(AbstractStore):
     def log_batch(self, run_id, metrics, params, tags):
         raise NotImplementedError()
 
-    def record_logged_model(self, run_id, mlflow_model):
-        raise NotImplementedError()
-
 
 def test_get_experiment_by_name():
     experiments = [mock.Mock(), mock.Mock(), mock.Mock()]

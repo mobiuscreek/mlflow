@@ -11,7 +11,7 @@ import org.mlflow.utils.FileUtils;
 import org.mlflow.utils.SerializationUtils;
 
 /**
- * Represents an MLflow model. This class includes utility functions for parsing a serialized MLflow
+ * Represents an MLFlow model. This class includes utility functions for parsing a serialized MLFlow
  * model configuration (`MLModel`) as a {@link Model} object.
  */
 public class Model {
@@ -30,9 +30,9 @@ public class Model {
   private String rootPath;
 
   /**
-   * Loads the configuration of an MLflow model and parses it as a {@link Model} object.
+   * Loads the configuration of an MLFlow model and parses it as a {@link Model} object.
    *
-   * @param modelRootPath The path to the root directory of the MLflow model
+   * @param modelRootPath The path to the root directory of the MLFlow model
    */
   public static Model fromRootPath(String modelRootPath) throws IOException {
     String configPath = FileUtils.join(modelRootPath, "MLmodel");
@@ -40,7 +40,7 @@ public class Model {
   }
 
   /**
-   * Loads the configuration of an MLflow model and parses it as a {@link Model} object.
+   * Loads the configuration of an MLFlow model and parses it as a {@link Model} object.
    *
    * @param configPath The path to the `MLModel` configuration file
    */
@@ -53,22 +53,22 @@ public class Model {
     return model;
   }
 
-  /** @return The MLflow model's artifact path */
+  /** @return The MLFlow model's artifact path */
   public Optional<String> getArtifactPath() {
     return Optional.ofNullable(this.artifactPath);
   }
 
-  /** @return The MLflow model's time of creation */
+  /** @return The MLFlow model's time of creation */
   public Optional<String> getUtcTimeCreated() {
     return Optional.ofNullable(this.utcTimeCreated);
   }
 
-  /** @return The MLflow model's run id */
+  /** @return The MLFlow model's run id */
   public Optional<String> getRunId() {
     return Optional.ofNullable(this.runId);
   }
 
-  /** @return The path to the root directory of the MLflow model */
+  /** @return The path to the root directory of the MLFlow model */
   public Optional<String> getRootPath() {
     return Optional.ofNullable(this.rootPath);
   }

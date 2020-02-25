@@ -42,25 +42,7 @@ public class TestClientProvider {
       logger.info("MLFLOW_TRACKING_URI was set, test will run against that server");
       return new MlflowClient(trackingUri);
     } else {
-      Path tempDir = Files.createTempDirectory(getClass().getSimpleName());
-      String mlruns = tempDir.resolve("mlruns").toString();
-      return startServerProcess(mlruns, mlruns);
-    }
-  }
-
-  public MlflowClient initializeClientAndSqlLiteBasedServer() throws IOException {
-    if (serverProcess != null) {
-      throw new IllegalStateException("Previous server process not cleaned up");
-    }
-
-    String trackingUri = System.getenv("MLFLOW_TRACKING_URI");
-    if (trackingUri != null) {
-      logger.info("MLFLOW_TRACKING_URI was set, test will run against that server");
-      return new MlflowClient(trackingUri);
-    } else {
-      Path tempDir = Files.createTempDirectory(getClass().getSimpleName());
-      String tempDBFile = tempDir.resolve("sqldb").toAbsolutePath().toString();
-      return startServerProcess("sqlite:///" + tempDBFile, tempDir.toString());
+      return startServerProcess();
     }
   }
 
@@ -70,23 +52,16 @@ public class TestClientProvider {
    * not initialized successfully.
    */
   public void cleanupClientAndServer() throws InterruptedException {
-    if (serverProcess == null) {
-      return;
-    }
-
-    try {
+    if (serverProcess != null) {
       serverProcess.destroy();
       // Do our best to ensure that the
       boolean processTerminated = serverProcess.waitFor(30, TimeUnit.SECONDS);
       if (!processTerminated) {
-        logger.warn("Server process did not terminate in 30 seconds, will forcibly destroy");
+        logger.warn("Server process did not terminate in 30 seconds, will try to forcibly destroy");
         serverProcess.destroyForcibly();
       }
-    } catch (Exception ex) {
-      logger.warn("Failed to destroy server process nicely.", ex);
-      serverProcess.destroyForcibly();
+      serverProcess = null;
     }
-    serverProcess = null;
   }
 
   public MlflowHostCredsProvider getClientHostCredsProvider(MlflowClient client) {
@@ -101,21 +76,15 @@ public class TestClientProvider {
    * Standard out and error from the server will be streamed to System.out and System.err.
    *
    * This method will wait until the server is up and running
-   * @param backendStoreUri the backend store uri to use
-   * @param
    * @return MlflowClient pointed at the local server.
    */
-  private MlflowClient startServerProcess(String backendStoreUri,
-                                          String defaultArtifactRoot) throws IOException {
+  private MlflowClient startServerProcess() throws IOException {
     ProcessBuilder pb = new ProcessBuilder();
+    Path tempDir = Files.createTempDirectory(getClass().getSimpleName());
     int freePort = getFreePort();
     String bindAddress = "127.0.0.1";
-    pb.command("mlflow", "server",
-            "--host", bindAddress,
-            "--port", "" + freePort,
-            "--backend-store-uri", backendStoreUri,
-            "--workers", "1",
-            "--default-artifact-root", defaultArtifactRoot);
+    pb.command("mlflow", "server", "--host", bindAddress, "--port", "" + freePort,
+      "--backend-store-uri", tempDir.resolve("mlruns").toString(), "--workers", "1");
     serverProcess = pb.start();
 
     // NB: We cannot use pb.inheritIO() because that interacts poorly with the Maven

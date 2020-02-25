@@ -278,21 +278,21 @@ def test_prepare_env_fails(sk_model):
 
     with TempDir(chdr=True):
         with mlflow.start_run() as active_run:
-            mlflow.sklearn.log_model(sk_model, "model",
-                                     conda_env={"dependencies": ["mlflow-does-not-exist-dep==abc"]})
+            mlflow.sklearn.log_model(sk_model, "model", conda_env={"env": "Bad conda env"})
             model_uri = "runs:/{run_id}/model".format(run_id=active_run.info.run_id)
 
         # Test with no conda
         p = subprocess.Popen(["mlflow", "models", "prepare-env", "-m", model_uri,
-                              "--no-conda"])
+                              "--no-conda"], stderr=subprocess.PIPE)
         assert p.wait() == 0
 
         # With conda - should fail due to bad conda environment.
-        p = subprocess.Popen(["mlflow", "models", "prepare-env", "-m", model_uri])
+        p = subprocess.Popen(["mlflow", "models", "prepare-env", "-m", model_uri],
+                             stderr=subprocess.PIPE)
         assert p.wait() != 0
 
 
-@pytest.mark.large
+@pytest.mark.release
 def test_build_docker(iris_data, sk_model):
     with mlflow.start_run() as active_run:
         mlflow.sklearn.log_model(sk_model, "model")
@@ -305,7 +305,7 @@ def test_build_docker(iris_data, sk_model):
     _validate_with_rest_endpoint(scoring_proc, host_port, df, x, sk_model)
 
 
-@pytest.mark.large
+@pytest.mark.release
 def test_build_docker_with_env_override(iris_data, sk_model):
     with mlflow.start_run() as active_run:
         mlflow.sklearn.log_model(sk_model, "model")
